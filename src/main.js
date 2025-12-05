@@ -131,14 +131,36 @@ function renderServerList() {
   // Collect servers based on selection
   let servers = [];
   if (state.selectedTool === 'all') {
+    // Group servers by name
+    const groups = {};
     for (const [tool, toolServers] of Object.entries(state.configs)) {
       if (!Array.isArray(toolServers)) continue;
-      servers.push(...toolServers.map(s => ({ ...s, tool })));
+
+      toolServers.forEach(s => {
+        if (!groups[s.name]) {
+          groups[s.name] = {
+            ...s,
+            tools: [],
+            instances: []
+          };
+        }
+        groups[s.name].tools.push(tool);
+        groups[s.name].instances.push({ ...s, tool });
+      });
     }
+
+    // Convert to array
+    servers = Object.values(groups).map(g => ({
+      ...g,
+      // If mixed enabled state, default to true if any is enabled
+      enabled: g.instances.some(i => i.enabled),
+      // Keep track if it's a group (more than 1 tool)
+      isGroup: g.tools.length > 1
+    }));
   } else {
     const toolServers = state.configs[state.selectedTool];
     if (Array.isArray(toolServers)) {
-      servers = toolServers.map(s => ({ ...s, tool: state.selectedTool }));
+      servers = toolServers.map(s => ({ ...s, tool: state.selectedTool, tools: [state.selectedTool] }));
     }
   }
 
@@ -160,15 +182,32 @@ function renderServerList() {
   }
 
   container.innerHTML = servers.map(server => {
-    const tool = state.tools.find(t => t.name === server.tool);
+    // Generate badges HTML
+    const badgesHtml = server.tools.map(t => {
+      const toolInfo = state.tools.find(x => x.name === t);
+      return `<span class="server-tool-badge">${toolInfo?.displayName || t}</span>`;
+    }).join('');
+
+    // Determine action handlers
+    const toggleHandler = server.isGroup
+      ? `window.toggleGroupedServer('${escapeHtml(server.name)}', '${server.tools.join(',')}')`
+      : `window.toggleServer('${server.tools[0]}', '${escapeHtml(server.name)}')`;
+
+    const deleteHandler = server.isGroup
+      ? `window.deleteGroupedServer('${escapeHtml(server.name)}', '${server.tools.join(',')}')`
+      : `window.deleteServer('${server.tools[0]}', '${escapeHtml(server.name)}')`;
+
+    // For edit/copy/install, just use the first tool/instance
+    const primaryTool = server.tools[0];
+
     return `
-      <div class="server-card ${server.enabled ? '' : 'disabled'}" data-tool="${server.tool}" data-name="${server.name}">
+      <div class="server-card ${server.enabled ? '' : 'disabled'}" data-name="${server.name}">
         <div class="server-status"></div>
         <div class="server-info">
           <div class="server-name">${escapeHtml(server.name)}</div>
           <div class="server-meta">
-            <span class="server-meta-item">
-              <span class="server-tool-badge">${tool?.displayName || server.tool}</span>
+            <span class="server-meta-item badges-container">
+              ${badgesHtml}
             </span>
             <span class="server-meta-item">
               ${server.type === 'stdio' ? '⚡ stdio' : '🌐 sse'}
@@ -181,28 +220,28 @@ function renderServerList() {
           </div>
         </div>
         <div class="server-actions">
-          <button class="btn btn-secondary btn-icon" title="Copy JSON" onclick="window.copyServerJson('${server.tool}', '${escapeHtml(server.name)}')">
+          <button class="btn btn-secondary btn-icon" title="Copy JSON" onclick="window.copyServerJson('${primaryTool}', '${escapeHtml(server.name)}')">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
               <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
             </svg>
           </button>
-          <button class="btn btn-secondary btn-icon" title="Install to..." onclick="window.openInstallToModal('${server.tool}', '${escapeHtml(server.name)}')">
+          <button class="btn btn-secondary btn-icon" title="Install to..." onclick="window.openInstallToModal('${primaryTool}', '${escapeHtml(server.name)}')">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
             </svg>
           </button>
-          <button class="btn btn-secondary btn-icon" title="Toggle" onclick="window.toggleServer('${server.tool}', '${escapeHtml(server.name)}')">
+          <button class="btn btn-secondary btn-icon" title="Toggle" onclick="${toggleHandler}">
             ${server.enabled ?
         '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3a5 5 0 0 0 0 10h6a5 5 0 0 0 0-10H5zm6 9a4 4 0 1 1 0-8 4 4 0 0 1 0 8z"/></svg>' :
         '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M11 4a4 4 0 0 1 0 8H8a4.992 4.992 0 0 0 2-4 4.992 4.992 0 0 0-2-4h3zm-6 8a4 4 0 1 1 0-8 4 4 0 0 1 0 8zM0 8a5 5 0 0 0 5 5h6a5 5 0 0 0 0-10H5a5 5 0 0 0-5 5z"/></svg>'}
           </button>
-          <button class="btn btn-secondary btn-icon" title="Edit" onclick="window.openEditServerModal('${server.tool}', '${escapeHtml(server.name)}')">
+          <button class="btn btn-secondary btn-icon" title="Edit" onclick="window.openEditServerModal('${primaryTool}', '${escapeHtml(server.name)}')">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
             </svg>
           </button>
-          <button class="btn btn-danger btn-icon" title="Delete" onclick="window.deleteServer('${server.tool}', '${escapeHtml(server.name)}')">
+          <button class="btn btn-danger btn-icon" title="Delete" onclick="${deleteHandler}">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
               <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
@@ -424,6 +463,39 @@ window.deleteServer = async function (tool, name) {
     await api.deleteServer(tool, name);
     await loadConfigs();
     showToast('Server deleted', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+// ===== Grouped Server Actions =====
+window.toggleGroupedServer = async function (name, toolsStr) {
+  const tools = toolsStr.split(',');
+  try {
+    let successCount = 0;
+    for (const tool of tools) {
+      await api.toggleServer(tool, name);
+      successCount++;
+    }
+    await loadConfigs();
+    showToast(`Toggled server on ${successCount} tools`, 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+window.deleteGroupedServer = async function (name, toolsStr) {
+  const tools = toolsStr.split(',');
+  if (!confirm(`Delete server "${name}" from ALL ${tools.length} tools?`)) return;
+
+  try {
+    let successCount = 0;
+    for (const tool of tools) {
+      await api.deleteServer(tool, name);
+      successCount++;
+    }
+    await loadConfigs();
+    showToast(`Deleted server from ${successCount} tools`, 'success');
   } catch (err) {
     showToast(err.message, 'error');
   }

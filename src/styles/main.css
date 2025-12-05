@@ -937,6 +937,21 @@ body {
   overflow-y: auto;
 }
 
+.server-meta-item.badges-container {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.server-tool-badge {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
 .settings-tool-item {
   padding: var(--spacing-md);
   background: var(--bg-tertiary);

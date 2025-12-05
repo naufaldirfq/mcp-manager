@@ -181,6 +181,17 @@ function renderServerList() {
           </div>
         </div>
         <div class="server-actions">
+          <button class="btn btn-secondary btn-icon" title="Copy JSON" onclick="window.copyServerJson('${server.tool}', '${escapeHtml(server.name)}')">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+              <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+            </svg>
+          </button>
+          <button class="btn btn-secondary btn-icon" title="Install to..." onclick="window.openInstallToModal('${server.tool}', '${escapeHtml(server.name)}')">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
+            </svg>
+          </button>
           <button class="btn btn-secondary btn-icon" title="Toggle" onclick="window.toggleServer('${server.tool}', '${escapeHtml(server.name)}')">
             ${server.enabled ?
         '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3a5 5 0 0 0 0 10h6a5 5 0 0 0 0-10H5zm6 9a4 4 0 1 1 0-8 4 4 0 0 1 0 8z"/></svg>' :
@@ -413,6 +424,103 @@ window.deleteServer = async function (tool, name) {
     await api.deleteServer(tool, name);
     await loadConfigs();
     showToast('Server deleted', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+window.copyServerJson = function (tool, name) {
+  const servers = state.configs[tool];
+  const server = servers?.find(s => s.name === name);
+  if (!server) return;
+
+  // Create clean config object
+  const config = {};
+  const serverConfig = {};
+
+  if (server.type === 'stdio') {
+    serverConfig.command = server.command;
+    if (server.args && server.args.length) {
+      serverConfig.args = server.args;
+    }
+  } else {
+    serverConfig.url = server.url;
+  }
+
+  if (server.env && Object.keys(server.env).length) {
+    serverConfig.env = server.env;
+  }
+
+  if (!server.enabled) {
+    serverConfig.disabled = true;
+  }
+
+  config[server.name] = serverConfig;
+
+  navigator.clipboard.writeText(JSON.stringify(config, null, 2))
+    .then(() => showToast('Server JSON copied to clipboard', 'success'))
+    .catch(err => showToast('Failed to copy: ' + err, 'error'));
+};
+
+window.openInstallToModal = function (sourceTool, serverName) {
+  const servers = state.configs[sourceTool];
+  const server = servers?.find(s => s.name === serverName);
+  if (!server) return;
+
+  const otherTools = state.tools.filter(t => t.name !== sourceTool);
+
+  openModal(`
+    <div class="modal-header">
+      <h3>Install "${escapeHtml(serverName)}" to...</h3>
+      <button class="modal-close" onclick="window.closeModal()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+        Select tools to install this server to:
+      </p>
+      <div class="server-select-list" id="install-tools-list">
+        ${otherTools.map(t => `
+          <label class="server-select-item">
+            <input type="checkbox" value="${t.name}">
+            <span class="status-dot ${t.exists ? 'exists' : 'missing'}"></span>
+            <span>${t.displayName}</span>
+          </label>
+        `).join('')}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="window.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="window.performInstallTo('${sourceTool}', '${escapeHtml(serverName)}')">
+        Install
+      </button>
+    </div>
+  `);
+};
+
+window.performInstallTo = async function (sourceTool, serverName) {
+  const checkboxes = document.querySelectorAll('#install-tools-list input:checked');
+  const targetTools = Array.from(checkboxes).map(cb => cb.value);
+
+  if (targetTools.length === 0) {
+    showToast('Select at least one tool', 'warning');
+    return;
+  }
+
+  try {
+    let successCount = 0;
+    for (const targetTool of targetTools) {
+      // Use sync_configs to copy the single server
+      await api.syncConfigs(sourceTool, targetTool, [serverName]);
+      successCount++;
+    }
+
+    await loadConfigs();
+    closeModal();
+    showToast(`Installed to ${successCount} tool(s)`, 'success');
   } catch (err) {
     showToast(err.message, 'error');
   }

@@ -1,0 +1,99 @@
+{
+    "filesystem": {
+        "name": "Filesystem",
+        "description": "Access local files and directories",
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+            "-y",
+            "@modelcontextprotocol/server-filesystem",
+            "/path/to/allowed/dir"
+        ],
+        "env": {}
+    },
+    "github": {
+        "name": "GitHub",
+        "description": "Interact with GitHub repositories",
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+            "-y",
+            "@modelcontextprotocol/server-github"
+        ],
+        "env": {
+            "GITHUB_PERSONAL_ACCESS_TOKEN": ""
+        }
+    },
+    "sqlite": {
+        "name": "SQLite",
+        "description": "Query SQLite databases",
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+            "-y",
+            "@modelcontextprotocol/server-sqlite",
+            "/path/to/database.db"
+        ],
+        "env": {}
+    },
+    "fetch": {
+        "name": "Fetch",
+        "description": "Fetch and process web content",
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+            "-y",
+            "@modelcontextprotocol/server-fetch"
+        ],
+        "env": {}
+    },
+    "memory": {
+        "name": "Memory",
+        "description": "Persistent memory for conversations",
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+            "-y",
+            "@modelcontextprotocol/server-memory"
+        ],
+        "env": {}
+    },
+    "puppeteer": {
+        "name": "Puppeteer",
+        "description": "Browser automation and web scraping",
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+            "-y",
+            "@modelcontextprotocol/server-puppeteer"
+        ],
+        "env": {}
+    },
+    "slack": {
+        "name": "Slack",
+        "description": "Interact with Slack workspaces",
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+            "-y",
+            "@modelcontextprotocol/server-slack"
+        ],
+        "env": {
+            "SLACK_BOT_TOKEN": "",
+            "SLACK_TEAM_ID": ""
+        }
+    },
+    "brave-search": {
+        "name": "Brave Search",
+        "description": "Web search using Brave Search API",
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+            "-y",
+            "@modelcontextprotocol/server-brave-search"
+        ],
+        "env": {
+            "BRAVE_API_KEY": ""
+        }
+    }
+}

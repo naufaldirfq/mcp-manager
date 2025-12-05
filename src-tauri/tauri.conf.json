@@ -1,0 +1,46 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "MCP Manager",
+  "version": "1.0.0",
+  "identifier": "com.mcp-manager.app",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev:client",
+    "beforeBuildCommand": "npm run build:client"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "MCP Manager",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "app",
+      "dmg"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "DeveloperTool",
+    "shortDescription": "Manage MCP configurations across AI tools",
+    "longDescription": "MCP Manager helps you manage Model Context Protocol (MCP) server configurations across Claude Code, Gemini CLI, Codex CLI, Copilot CLI, and VS Code from a single dashboard."
+  }
+}

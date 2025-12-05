@@ -614,6 +614,9 @@ window.performSync = async function () {
 async function openBackupModal() {
   const backups = await api.getBackups();
 
+  // Sort backups by timestamp descending (newest first)
+  backups.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
   openModal(`
     <div class="modal-header">
       <h3>Backups</h3>
@@ -630,10 +633,18 @@ async function openBackupModal() {
       
       <div class="backup-list">
         ${backups.length === 0 ? '<p style="color: var(--text-muted); text-align: center;">No backups yet</p>' :
-      backups.map(b => `
+      backups.map(b => {
+        // Fix date parsing: 2025-12-05T17-15-59 -> 2025-12-05T17:15:59
+        const parts = b.timestamp.split('T');
+        const dateStr = parts.length === 2
+          ? `${parts[0]}T${parts[1].replace(/-/g, ':')}`
+          : b.timestamp;
+        const displayDate = new Date(dateStr).toLocaleString();
+
+        return `
             <div class="backup-item">
               <div class="backup-info">
-                <div class="backup-date">${new Date(b.timestamp.replace(/-/g, ':')).toLocaleString()}</div>
+                <div class="backup-date">${displayDate}</div>
                 <div class="backup-file">${b.name}</div>
               </div>
               <div style="display: flex; gap: 0.5rem;">
@@ -641,7 +652,8 @@ async function openBackupModal() {
                 <button class="btn btn-danger btn-sm" onclick="window.deleteBackup('${b.name}')">Delete</button>
               </div>
             </div>
-          `).join('')
+          `;
+      }).join('')
     }
       </div>
     </div>
@@ -651,7 +663,7 @@ async function openBackupModal() {
 window.createBackup = async function () {
   try {
     const result = await api.createBackup();
-    showToast(`Backup created: ${result.filename}`, 'success');
+    showToast(`Backup created: ${result.name}`, 'success');
     openBackupModal(); // Refresh list
   } catch (err) {
     showToast(err.message, 'error');
@@ -672,13 +684,15 @@ window.restoreBackup = async function (filename) {
 };
 
 window.deleteBackup = async function (filename) {
-  if (!confirm('Delete this backup?')) return;
+  console.log('Deleting backup:', filename);
+  if (!confirm(`Delete backup "${filename}"?`)) return;
 
   try {
     await api.deleteBackup(filename);
     showToast('Backup deleted', 'success');
     openBackupModal(); // Refresh list
   } catch (err) {
+    console.error('Delete failed:', err);
     showToast(err.message, 'error');
   }
 };

@@ -60,24 +60,32 @@ function renderToolTabs() {
 
   // Count servers per tool
   const counts = { all: 0 };
+  let existsCount = 0;
   for (const [tool, servers] of Object.entries(state.configs)) {
     if (!Array.isArray(servers)) continue;
     counts[tool] = servers.length;
     counts.all += servers.length;
   }
 
+  // Count tools with existing configs
+  for (const t of state.tools) {
+    if (t.exists) existsCount++;
+  }
+
   const tabs = [
-    { id: 'all', name: 'All Tools', count: counts.all },
+    { id: 'all', name: 'All Tools', count: counts.all, exists: true, isAll: true },
     ...state.tools.map(t => ({
       id: t.name,
       name: t.displayName,
-      count: counts[t.name] || 0
+      count: counts[t.name] || 0,
+      exists: t.exists
     }))
   ];
 
   container.innerHTML = tabs.map(tab => `
-    <button class="tool-tab ${state.selectedTool === tab.id ? 'active' : ''}" 
-            data-tool="${tab.id}">
+    <button class="tool-tab ${state.selectedTool === tab.id ? 'active' : ''} ${!tab.exists && !tab.isAll ? 'not-found' : ''}" 
+            data-tool="${tab.id}" title="${!tab.exists && !tab.isAll ? 'Config file not found' : ''}">
+      ${!tab.isAll ? `<span class="status-dot ${tab.exists ? 'exists' : 'missing'}"></span>` : ''}
       ${tab.name}
       <span class="count">${tab.count}</span>
     </button>
@@ -757,6 +765,123 @@ async function loadTemplates() {
   }
 }
 
+// ===== Settings Modal =====
+function openSettingsModal() {
+  const toolsList = state.tools.map(tool => `
+    <div class="settings-tool-item" data-tool="${tool.name}">
+      <div class="settings-tool-header">
+        <span class="status-dot ${tool.exists ? 'exists' : 'missing'}"></span>
+        <span class="settings-tool-name">${tool.displayName}</span>
+        <span class="settings-tool-status ${tool.exists ? 'found' : 'not-found'}">
+          ${tool.exists ? '✓ Found' : '✗ Not found'}
+        </span>
+      </div>
+      <div class="settings-tool-path-input">
+        <input type="text" class="form-input path-input" 
+               data-tool="${tool.name}"
+               value="${escapeHtml(tool.configPath)}" 
+               placeholder="Config file path"
+               ${tool.isCustomPath ? 'data-custom="true"' : ''}>
+        ${tool.isCustomPath ? `
+          <button class="btn btn-secondary btn-sm reset-path-btn" data-tool="${tool.name}" title="Reset to default">
+            ↺
+          </button>
+        ` : ''}
+      </div>
+      <div class="settings-tool-key">
+        Key: <code>${tool.configKey}</code>
+      </div>
+    </div>
+  `).join('');
+
+  openModal(`
+    <div class="modal-header">
+      <h3>Settings</h3>
+      <button class="modal-close" onclick="window.closeModal()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="settings-section">
+        <h4>Config File Paths</h4>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+          Edit paths to point to your config files. Changes are saved automatically.
+          <br><span class="status-dot exists" style="display: inline-block; margin: 0 4px;"></span> = found,
+          <span class="status-dot missing" style="display: inline-block; margin: 0 4px;"></span> = not found
+        </p>
+        <div class="settings-tools-list">
+          ${toolsList}
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="window.closeModal()">Close</button>
+      <button class="btn btn-primary" onclick="window.refreshTools()">Refresh Detection</button>
+    </div>
+  `);
+
+  // Add event listeners for path inputs
+  setupSettingsHandlers();
+}
+
+function setupSettingsHandlers() {
+  // Debounce timer for auto-save
+  let saveTimeout = null;
+
+  document.querySelectorAll('.path-input').forEach(input => {
+    input.addEventListener('input', () => {
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(async () => {
+        const tool = input.dataset.tool;
+        const path = input.value.trim();
+        await window.saveToolPath(tool, path);
+      }, 500);
+    });
+  });
+
+  document.querySelectorAll('.reset-path-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const tool = btn.dataset.tool;
+      await window.saveToolPath(tool, '');
+      await loadTools();
+      await loadConfigs();
+      openSettingsModal();
+      showToast('Path reset to default', 'success');
+    });
+  });
+}
+
+window.saveToolPath = async function (tool, path) {
+  try {
+    await api.updateToolPath(tool, path);
+    await loadTools();
+    await loadConfigs();
+    // Update the status dot in the modal without reopening
+    const toolItem = document.querySelector(`.settings-tool-item[data-tool="${tool}"]`);
+    if (toolItem) {
+      const toolInfo = state.tools.find(t => t.name === tool);
+      if (toolInfo) {
+        const statusDot = toolItem.querySelector('.status-dot');
+        const statusText = toolItem.querySelector('.settings-tool-status');
+        statusDot.className = `status-dot ${toolInfo.exists ? 'exists' : 'missing'}`;
+        statusText.className = `settings-tool-status ${toolInfo.exists ? 'found' : 'not-found'}`;
+        statusText.textContent = toolInfo.exists ? '✓ Found' : '✗ Not found';
+      }
+    }
+  } catch (err) {
+    showToast('Failed to save path: ' + err.message, 'error');
+  }
+};
+
+window.refreshTools = async function () {
+  await loadTools();
+  await loadConfigs();
+  openSettingsModal();
+  showToast('Tool detection refreshed', 'success');
+};
+
 // ===== Initialization =====
 async function init() {
   // Event listeners
@@ -765,6 +890,7 @@ async function init() {
   document.getElementById('btn-export').addEventListener('click', exportConfigs);
   document.getElementById('btn-sync').addEventListener('click', openSyncModal);
   document.getElementById('btn-paste-json').addEventListener('click', openPasteJsonModal);
+  document.getElementById('btn-settings').addEventListener('click', openSettingsModal);
   document.getElementById('btn-add-server').addEventListener('click', window.openAddServerModal);
 
   // Load data
@@ -779,3 +905,4 @@ style.textContent = '.hidden { display: none !important; }';
 document.head.appendChild(style);
 
 init();
+

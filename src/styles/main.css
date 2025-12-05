@@ -6,23 +6,23 @@
   --bg-tertiary: #1e1e28;
   --bg-card: rgba(30, 30, 40, 0.8);
   --bg-card-hover: rgba(40, 40, 55, 0.9);
-  
+
   --text-primary: #f0f0f5;
   --text-secondary: #a0a0b0;
   --text-muted: #6a6a7a;
-  
+
   --accent-primary: #6366f1;
   --accent-secondary: #8b5cf6;
   --accent-gradient: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-  
+
   --success: #22c55e;
   --warning: #f59e0b;
   --error: #ef4444;
   --info: #3b82f6;
-  
+
   --border-color: rgba(255, 255, 255, 0.08);
   --border-glow: rgba(99, 102, 241, 0.3);
-  
+
   /* Spacing */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
@@ -30,19 +30,19 @@
   --spacing-lg: 1.5rem;
   --spacing-xl: 2rem;
   --spacing-2xl: 3rem;
-  
+
   /* Border Radius */
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
   --radius-xl: 24px;
-  
+
   /* Shadows */
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
   --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.2);
-  
+
   /* Typography */
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-size-xs: 0.75rem;
@@ -51,7 +51,7 @@
   --font-size-lg: 1.125rem;
   --font-size-xl: 1.25rem;
   --font-size-2xl: 1.5rem;
-  
+
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
@@ -59,7 +59,9 @@
 }
 
 /* ===== Reset & Base ===== */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -253,6 +255,32 @@ body {
 
 .tool-tab.active .count {
   background: rgba(0, 0, 0, 0.2);
+}
+
+/* Status indicator for config detection */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot.exists {
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
+}
+
+.status-dot.missing {
+  background: var(--error);
+  opacity: 0.7;
+}
+
+.tool-tab.not-found {
+  opacity: 0.6;
+}
+
+.tool-tab.not-found:hover {
+  opacity: 0.8;
 }
 
 /* ===== Stats Bar ===== */
@@ -495,6 +523,7 @@ body {
     opacity: 0;
     transform: scale(0.95) translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -632,11 +661,11 @@ body {
   transition: all var(--transition-fast);
 }
 
-.toggle-input:checked + .toggle-slider {
+.toggle-input:checked+.toggle-slider {
   background: var(--accent-primary);
 }
 
-.toggle-input:checked + .toggle-slider::before {
+.toggle-input:checked+.toggle-slider::before {
   transform: translateX(20px);
   background: white;
 }
@@ -674,6 +703,7 @@ body {
     opacity: 0;
     transform: translateX(100%);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -823,41 +853,41 @@ body {
     flex-direction: column;
     gap: var(--spacing-md);
   }
-  
+
   .header-actions {
     width: 100%;
     justify-content: center;
   }
-  
+
   .main {
     padding: var(--spacing-md);
   }
-  
+
   .stats-bar {
     grid-template-columns: 1fr;
   }
-  
+
   .tool-tabs {
     flex-wrap: nowrap;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   .form-row {
     grid-template-columns: 1fr;
   }
-  
+
   .sync-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .template-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .server-card {
     flex-wrap: wrap;
   }
-  
+
   .server-actions {
     opacity: 1;
     width: 100%;
@@ -889,4 +919,84 @@ body {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ===== Settings Modal ===== */
+.settings-section h4 {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-primary);
+}
+
+.settings-tools-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.settings-tool-item {
+  padding: var(--spacing-md);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.settings-tool-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.settings-tool-name {
+  font-weight: 600;
+  flex: 1;
+}
+
+.settings-tool-status {
+  font-size: var(--font-size-xs);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.settings-tool-status.found {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--success);
+}
+
+.settings-tool-status.not-found {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--error);
+}
+
+.settings-tool-path-input {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+}
+
+.settings-tool-path-input .path-input {
+  flex: 1;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: var(--font-size-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.settings-tool-path-input .reset-path-btn {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-sm);
+}
+
+.settings-tool-key {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-top: var(--spacing-xs);
+}
+
+.settings-tool-key code {
+  font-family: 'SF Mono', Monaco, monospace;
+  color: var(--text-secondary);
 }

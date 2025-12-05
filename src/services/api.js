@@ -55,3 +55,9 @@ export async function exportConfigs() {
 export async function importConfigs(data, merge = false) {
     return await invoke('import_configs', { tools: data.tools, merge });
 }
+
+// ===== Settings =====
+export async function updateToolPath(tool, path) {
+    return await invoke('update_tool_path', { tool, path });
+}
+

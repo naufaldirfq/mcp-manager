@@ -33,6 +33,11 @@ pub struct ToolInfo {
     pub display_name: String,
     #[serde(rename = "configPath")]
     pub config_path: String,
+    #[serde(rename = "configKey")]
+    pub config_key: String,
+    pub exists: bool,
+    #[serde(rename = "isCustomPath")]
+    pub is_custom_path: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,28 +52,144 @@ pub struct BackupData {
     pub tools: HashMap<String, Vec<McpServer>>,
 }
 
-// ===== Config Paths =====
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AppSettings {
+    #[serde(default)]
+    pub custom_paths: HashMap<String, String>,
+}
+
+// ===== Tool Definitions =====
+
+struct ToolDef {
+    name: &'static str,
+    display_name: &'static str,
+    config_key: &'static str,
+    format: &'static str,
+    path_fn: fn(&PathBuf) -> PathBuf,
+}
+
+fn get_tool_definitions() -> Vec<ToolDef> {
+    vec![
+        ToolDef {
+            name: "claude",
+            display_name: "Claude Code",
+            config_key: "mcpServers",
+            format: "json",
+            path_fn: |home| home.join(".claude.json"),
+        },
+        ToolDef {
+            name: "gemini",
+            display_name: "Gemini CLI",
+            config_key: "mcpServers",
+            format: "json",
+            path_fn: |home| home.join(".gemini").join("settings.json"),
+        },
+        ToolDef {
+            name: "codex",
+            display_name: "Codex CLI",
+            config_key: "mcp_servers",
+            format: "toml",
+            path_fn: |home| home.join(".codex").join("config.toml"),
+        },
+        ToolDef {
+            name: "copilot",
+            display_name: "Copilot CLI",
+            config_key: "mcpServers",
+            format: "json",
+            path_fn: |home| home.join(".copilot").join("mcp-config.json"),
+        },
+        ToolDef {
+            name: "vscode",
+            display_name: "VS Code",
+            config_key: "servers",
+            format: "json",
+            path_fn: |home| home.join("Library/Application Support/Code/User/mcp.json"),
+        },
+        ToolDef {
+            name: "cursor",
+            display_name: "Cursor",
+            config_key: "mcpServers",
+            format: "json",
+            path_fn: |home| home.join("Library/Application Support/Cursor/User/mcp.json"),
+        },
+        ToolDef {
+            name: "vscode-insiders",
+            display_name: "VS Code Insiders",
+            config_key: "servers",
+            format: "json",
+            path_fn: |home| home.join("Library/Application Support/Code - Insiders/User/mcp.json"),
+        },
+        ToolDef {
+            name: "windsurf",
+            display_name: "Windsurf",
+            config_key: "mcpServers",
+            format: "json",
+            path_fn: |home| home.join(".codeium/windsurf/mcp_config.json"),
+        },
+    ]
+}
+
+// ===== Settings & Config Paths =====
 
 fn get_home_dir() -> PathBuf {
     dirs::home_dir().expect("Could not find home directory")
 }
 
-fn get_config_paths() -> HashMap<&'static str, PathBuf> {
+fn get_settings_path() -> PathBuf {
+    get_home_dir().join(".mcp-manager").join("settings.json")
+}
+
+fn load_settings() -> AppSettings {
+    let path = get_settings_path();
+    if path.exists() {
+        if let Ok(content) = fs::read_to_string(&path) {
+            if let Ok(settings) = serde_json::from_str(&content) {
+                return settings;
+            }
+        }
+    }
+    AppSettings::default()
+}
+
+fn save_settings(settings: &AppSettings) -> Result<(), String> {
+    let path = get_settings_path();
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let content = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
+    fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+fn get_tool_path(tool_name: &str) -> Option<(PathBuf, &'static str, &'static str)> {
     let home = get_home_dir();
-    let mut paths = HashMap::new();
+    let settings = load_settings();
+    let defs = get_tool_definitions();
     
-    paths.insert("claude", home.join(".claude.json"));
-    paths.insert("gemini", home.join(".gemini").join("settings.json"));
-    paths.insert("codex", home.join(".codex").join("config.toml"));
-    paths.insert("copilot", home.join(".copilot").join("mcp-config.json"));
-    paths.insert("vscode", home.join("Library/Application Support/Code/User/mcp.json"));
-    
-    paths
+    for def in defs {
+        if def.name == tool_name {
+            // Check for custom path first
+            let path = if let Some(custom_path) = settings.custom_paths.get(tool_name) {
+                if !custom_path.is_empty() {
+                    // Expand ~ to home directory
+                    if custom_path.starts_with("~") {
+                        home.join(custom_path.trim_start_matches("~/"))
+                    } else {
+                        PathBuf::from(custom_path)
+                    }
+                } else {
+                    (def.path_fn)(&home)
+                }
+            } else {
+                (def.path_fn)(&home)
+            };
+            return Some((path, def.config_key, def.format));
+        }
+    }
+    None
 }
 
 fn get_backup_dir() -> PathBuf {
-    let home = get_home_dir();
-    home.join(".mcp-manager").join("backups")
+    get_home_dir().join(".mcp-manager").join("backups")
 }
 
 // ===== JSON Config Parsing =====
@@ -84,12 +205,19 @@ fn read_json_servers(path: &PathBuf, key: &str) -> Vec<McpServer> {
         Err(_) => return vec![],
     };
     
-    let servers = match config.get(key) {
-        Some(s) => s,
-        None => return vec![],
-    };
+    let keys_to_try = [key, "mcpServers", "servers"];
+    let mut servers_obj = None;
     
-    let servers_obj = match servers.as_object() {
+    for k in keys_to_try {
+        if let Some(s) = config.get(k) {
+            if let Some(o) = s.as_object() {
+                servers_obj = Some(o.clone());
+                break;
+            }
+        }
+    }
+    
+    let servers_obj = match servers_obj {
         Some(o) => o,
         None => return vec![],
     };
@@ -253,43 +381,33 @@ fn write_toml_servers(path: &PathBuf, servers: &[McpServer]) -> Result<(), Strin
 // ===== Config Operations =====
 
 fn read_servers(tool: &str) -> Vec<McpServer> {
-    let paths = get_config_paths();
-    let path = match paths.get(tool) {
-        Some(p) => p.clone(),
+    let (path, key, format) = match get_tool_path(tool) {
+        Some(p) => p,
         None => return vec![],
     };
     
-    match tool {
-        "claude" => read_json_servers(&path, "mcpServers"),
-        "gemini" => read_json_servers(&path, "mcpServers"),
-        "codex" => read_toml_servers(&path),
-        "copilot" => read_json_servers(&path, "mcpServers"),
-        "vscode" => read_json_servers(&path, "servers"),
-        _ => vec![],
+    match format {
+        "toml" => read_toml_servers(&path),
+        _ => read_json_servers(&path, key),
     }
 }
 
 fn write_servers(tool: &str, servers: &[McpServer]) -> Result<(), String> {
-    let paths = get_config_paths();
-    let path = match paths.get(tool) {
-        Some(p) => p.clone(),
+    let (path, key, format) = match get_tool_path(tool) {
+        Some(p) => p,
         None => return Err(format!("Unknown tool: {}", tool)),
     };
     
-    match tool {
-        "claude" => write_json_servers(&path, "mcpServers", servers),
-        "gemini" => write_json_servers(&path, "mcpServers", servers),
-        "codex" => write_toml_servers(&path, servers),
-        "copilot" => write_json_servers(&path, "mcpServers", servers),
-        "vscode" => write_json_servers(&path, "servers", servers),
-        _ => Err(format!("Unknown tool: {}", tool)),
+    match format {
+        "toml" => write_toml_servers(&path, servers),
+        _ => write_json_servers(&path, key, servers),
     }
 }
 
 fn get_all_configs_internal() -> HashMap<String, Vec<McpServer>> {
     let mut all = HashMap::new();
-    for tool in &["claude", "gemini", "codex", "copilot", "vscode"] {
-        all.insert(tool.to_string(), read_servers(tool));
+    for def in get_tool_definitions() {
+        all.insert(def.name.to_string(), read_servers(def.name));
     }
     all
 }
@@ -300,34 +418,50 @@ mod commands {
 
     #[tauri::command]
     pub fn get_tools() -> Vec<ToolInfo> {
-        let paths = get_config_paths();
-        vec![
+        let home = get_home_dir();
+        let settings = load_settings();
+        
+        get_tool_definitions().iter().map(|def| {
+            let default_path = (def.path_fn)(&home);
+            let custom_path = settings.custom_paths.get(def.name);
+            let is_custom = custom_path.map(|p| !p.is_empty()).unwrap_or(false);
+            
+            let actual_path = if is_custom {
+                let cp = custom_path.unwrap();
+                if cp.starts_with("~") {
+                    home.join(cp.trim_start_matches("~/"))
+                } else {
+                    PathBuf::from(cp)
+                }
+            } else {
+                default_path
+            };
+            
             ToolInfo {
-                name: "claude".to_string(),
-                display_name: "Claude Code".to_string(),
-                config_path: paths.get("claude").unwrap().to_string_lossy().to_string(),
-            },
-            ToolInfo {
-                name: "gemini".to_string(),
-                display_name: "Gemini CLI".to_string(),
-                config_path: paths.get("gemini").unwrap().to_string_lossy().to_string(),
-            },
-            ToolInfo {
-                name: "codex".to_string(),
-                display_name: "Codex CLI".to_string(),
-                config_path: paths.get("codex").unwrap().to_string_lossy().to_string(),
-            },
-            ToolInfo {
-                name: "copilot".to_string(),
-                display_name: "Copilot CLI".to_string(),
-                config_path: paths.get("copilot").unwrap().to_string_lossy().to_string(),
-            },
-            ToolInfo {
-                name: "vscode".to_string(),
-                display_name: "VS Code".to_string(),
-                config_path: paths.get("vscode").unwrap().to_string_lossy().to_string(),
-            },
-        ]
+                name: def.name.to_string(),
+                display_name: def.display_name.to_string(),
+                config_path: actual_path.to_string_lossy().to_string(),
+                config_key: def.config_key.to_string(),
+                exists: actual_path.exists(),
+                is_custom_path: is_custom,
+            }
+        }).collect()
+    }
+
+    #[tauri::command]
+    pub fn get_settings() -> AppSettings {
+        load_settings()
+    }
+
+    #[tauri::command]
+    pub fn update_tool_path(tool: String, path: String) -> Result<(), String> {
+        let mut settings = load_settings();
+        if path.is_empty() {
+            settings.custom_paths.remove(&tool);
+        } else {
+            settings.custom_paths.insert(tool, path);
+        }
+        save_settings(&settings)
     }
 
     #[tauri::command]
@@ -519,6 +653,8 @@ pub fn run() {
         .plugin(tauri_plugin_log::Builder::default().level(log::LevelFilter::Info).build())
         .invoke_handler(tauri::generate_handler![
             commands::get_tools,
+            commands::get_settings,
+            commands::update_tool_path,
             commands::get_all_configs,
             commands::get_configs,
             commands::add_or_update_server,

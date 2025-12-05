@@ -20,7 +20,9 @@
 
 | Feature | Description |
 |---------|-------------|
-| 🔗 **Unified Dashboard** | View all MCP servers across 5 AI tools in one place |
+| 🔗 **Unified Dashboard** | View all MCP servers across 8 AI tools in one place |
+| ⚙️ **Custom Paths** | Configure custom config file locations in Settings |
+| 📋 **Paste JSON** | Quickly add servers by pasting config snippets |
 | 🔄 **Sync** | Copy configurations between tools with one click |
 | 💾 **Backup & Restore** | Create snapshots of all your configurations |
 | 📦 **Import/Export** | Share configurations as JSON files |
@@ -29,18 +31,48 @@
 
 ## Supported AI Tools
 
-- **Claude Code** (`~/.claude.json`)
-- **Gemini CLI** (`~/.gemini/settings.json`)
-- **Codex CLI** (`~/.codex/config.toml`)
-- **Copilot CLI** (`~/.copilot/mcp-config.json`)
-- **VS Code** (`~/Library/Application Support/Code/User/mcp.json`)
+| Tool | Default Config Path |
+|------|---------------------|
+| Claude Code | `~/.claude.json` |
+| Gemini CLI | `~/.gemini/settings.json` |
+| Codex CLI | `~/.codex/config.toml` |
+| Copilot CLI | `~/.copilot/mcp-config.json` |
+| VS Code | `~/Library/Application Support/Code/User/mcp.json` |
+| Cursor | `~/Library/Application Support/Cursor/User/mcp.json` |
+| VS Code Insiders | `~/Library/Application Support/Code - Insiders/User/mcp.json` |
+| Windsurf | `~/.codeium/windsurf/mcp_config.json` |
+
+> 💡 **Tip**: You can customize these paths in **Settings** (⚙️ button) if your config is in a different location.
 
 ## Installation
 
-### Option 1: Download Release
-Download the latest `.dmg` from [Releases](https://github.com/naufaldirfq/mcp-manager/releases) and drag to Applications.
+### Step 1: Download
+Download `MCP-Manager-signed.dmg` from [Releases](https://github.com/naufaldirfq/mcp-manager/releases)
 
-### Option 2: Build from Source
+### Step 2: Install
+Open the DMG and drag **MCP Manager** to your Applications folder.
+
+### Step 3: First Launch (Important!)
+
+Since the app is not notarized with Apple, macOS will show a security warning. Use one of these methods to open it:
+
+#### Option A: Right-Click to Open (Recommended)
+1. **Right-click** (or Control+click) on MCP Manager in Applications
+2. Select **"Open"** from the context menu
+3. Click **"Open"** in the security dialog
+
+#### Option B: Terminal Command
+Run this command after installing:
+```bash
+xattr -cr "/Applications/MCP Manager.app"
+```
+Then double-click to open normally.
+
+> ⚠️ You only need to do this once. After the first launch, the app will open normally.
+
+---
+
+## Build from Source
 
 **Prerequisites:**
 - [Node.js](https://nodejs.org/) (v18+)
@@ -108,3 +140,4 @@ mcp-manager/
 ## License
 
 MIT
+

@@ -54,6 +54,27 @@ function handleEscapeKey(e) {
   if (e.key === 'Escape') closeModal();
 }
 
+function showConfirm(message, callback) {
+  window._pendingConfirm = callback;
+  openModal(`
+    <div class="modal-header">
+      <h3>Confirmation</h3>
+      <button class="modal-close" data-action="confirm-no">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p>${message}</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-action="confirm-no">Cancel</button>
+      <button class="btn btn-danger" data-action="confirm-yes">Confirm</button>
+    </div>
+  `);
+}
+
 // ===== Render Functions =====
 function renderToolTabs() {
   const container = document.getElementById('tool-tabs');
@@ -188,20 +209,11 @@ function renderServerList() {
       return `<span class="server-tool-badge">${toolInfo?.displayName || t}</span>`;
     }).join('');
 
-    // Determine action handlers
-    const toggleHandler = server.isGroup
-      ? `window.toggleGroupedServer('${escapeHtml(server.name)}', '${server.tools.join(',')}')`
-      : `window.toggleServer('${server.tools[0]}', '${escapeHtml(server.name)}')`;
-
-    const deleteHandler = server.isGroup
-      ? `window.deleteGroupedServer('${escapeHtml(server.name)}', '${server.tools.join(',')}')`
-      : `window.deleteServer('${server.tools[0]}', '${escapeHtml(server.name)}')`;
-
     // For edit/copy/install, just use the first tool/instance
     const primaryTool = server.tools[0];
 
     return `
-      <div class="server-card ${server.enabled ? '' : 'disabled'}" data-name="${server.name}">
+      <div class="server-card ${server.enabled ? '' : 'disabled'}" data-name="${escapeHtml(server.name)}">
         <div class="server-status"></div>
         <div class="server-info">
           <div class="server-name">${escapeHtml(server.name)}</div>
@@ -220,28 +232,39 @@ function renderServerList() {
           </div>
         </div>
         <div class="server-actions">
-          <button class="btn btn-secondary btn-icon" title="Copy JSON" onclick="window.copyServerJson('${primaryTool}', '${escapeHtml(server.name)}')">
+          <button class="btn btn-secondary btn-icon" title="Copy JSON" 
+                  data-action="copy-json" data-tool="${escapeHtml(primaryTool)}" data-name="${escapeHtml(server.name)}">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
               <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
             </svg>
           </button>
-          <button class="btn btn-secondary btn-icon" title="Install to..." onclick="window.openInstallToModal('${primaryTool}', '${escapeHtml(server.name)}')">
+          <button class="btn btn-secondary btn-icon" title="Install to..." 
+                  data-action="install-to" data-tool="${escapeHtml(primaryTool)}" data-name="${escapeHtml(server.name)}">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
             </svg>
           </button>
-          <button class="btn btn-secondary btn-icon" title="Toggle" onclick="${toggleHandler}">
+          <button class="btn btn-secondary btn-icon" title="Toggle" 
+                  data-action="toggle" 
+                  data-tool="${server.isGroup ? '' : escapeHtml(server.tools[0])}" 
+                  data-name="${escapeHtml(server.name)}" 
+                  data-tools="${escapeHtml(server.tools.join(','))}">
             ${server.enabled ?
         '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3a5 5 0 0 0 0 10h6a5 5 0 0 0 0-10H5zm6 9a4 4 0 1 1 0-8 4 4 0 0 1 0 8z"/></svg>' :
         '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M11 4a4 4 0 0 1 0 8H8a4.992 4.992 0 0 0 2-4 4.992 4.992 0 0 0-2-4h3zm-6 8a4 4 0 1 1 0-8 4 4 0 0 1 0 8zM0 8a5 5 0 0 0 5 5h6a5 5 0 0 0 0-10H5a5 5 0 0 0-5 5z"/></svg>'}
           </button>
-          <button class="btn btn-secondary btn-icon" title="Edit" onclick="window.openEditServerModal('${primaryTool}', '${escapeHtml(server.name)}')">
+          <button class="btn btn-secondary btn-icon" title="Edit" 
+                  data-action="edit" data-tool="${escapeHtml(primaryTool)}" data-name="${escapeHtml(server.name)}">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
             </svg>
           </button>
-          <button class="btn btn-danger btn-icon" title="Delete" onclick="${deleteHandler}">
+          <button class="btn btn-danger btn-icon" title="Delete" 
+                  data-action="delete" 
+                  data-tool="${server.isGroup ? '' : escapeHtml(server.tools[0])}" 
+                  data-name="${escapeHtml(server.name)}" 
+                  data-tools="${escapeHtml(server.tools.join(','))}">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
               <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
@@ -457,15 +480,15 @@ window.toggleServer = async function (tool, name) {
 };
 
 window.deleteServer = async function (tool, name) {
-  if (!confirm(`Delete server "${name}"?`)) return;
-
-  try {
-    await api.deleteServer(tool, name);
-    await loadConfigs();
-    showToast('Server deleted', 'success');
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
+  showConfirm(`Delete server "${name}"?`, async () => {
+    try {
+      await api.deleteServer(tool, name);
+      await loadConfigs();
+      showToast('Server deleted', 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
 };
 
 // ===== Grouped Server Actions =====
@@ -486,19 +509,19 @@ window.toggleGroupedServer = async function (name, toolsStr) {
 
 window.deleteGroupedServer = async function (name, toolsStr) {
   const tools = toolsStr.split(',');
-  if (!confirm(`Delete server "${name}" from ALL ${tools.length} tools?`)) return;
-
-  try {
-    let successCount = 0;
-    for (const tool of tools) {
-      await api.deleteServer(tool, name);
-      successCount++;
+  showConfirm(`Delete server "${name}" from ALL ${tools.length} tools?`, async () => {
+    try {
+      let successCount = 0;
+      for (const tool of tools) {
+        await api.deleteServer(tool, name);
+        successCount++;
+      }
+      await loadConfigs();
+      showToast(`Deleted server from ${successCount} tools`, 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
     }
-    await loadConfigs();
-    showToast(`Deleted server from ${successCount} tools`, 'success');
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
+  });
 };
 
 window.copyServerJson = function (tool, name) {
@@ -717,11 +740,11 @@ async function openBackupModal() {
             <div class="backup-item">
               <div class="backup-info">
                 <div class="backup-date">${displayDate}</div>
-                <div class="backup-file">${b.name}</div>
+                <div class="backup-file">${escapeHtml(b.name)}</div>
               </div>
-              <div style="display: flex; gap: 0.5rem;">
-                <button class="btn btn-secondary btn-sm" onclick="window.restoreBackup('${b.name}')">Restore</button>
-                <button class="btn btn-danger btn-sm" onclick="window.deleteBackup('${b.name}')">Delete</button>
+              <div style="display: flex; gap: 0.5rem;" class="backup-actions">
+                <button class="btn btn-secondary btn-sm" data-action="restore-backup" data-filename="${escapeHtml(b.name)}">Restore</button>
+                <button class="btn btn-danger btn-sm" data-action="delete-backup" data-filename="${escapeHtml(b.name)}">Delete</button>
               </div>
             </div>
           `;
@@ -1087,10 +1110,85 @@ async function init() {
   document.getElementById('btn-settings').addEventListener('click', openSettingsModal);
   document.getElementById('btn-add-server').addEventListener('click', window.openAddServerModal);
 
+  setupServerListHandlers();
+
   // Load data
   await loadTemplates();
   await loadTools();
   await loadConfigs();
+}
+
+function setupServerListHandlers() {
+  const serverList = document.getElementById('server-list');
+  const modal = document.getElementById('modal');
+
+  const handleAction = async (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+
+    const action = btn.dataset.action;
+    const tool = btn.dataset.tool;
+    const name = btn.dataset.name;
+    const toolsStr = btn.dataset.tools;
+    const tools = toolsStr ? toolsStr.split(',') : [];
+    const filename = btn.dataset.filename;
+
+    try {
+      switch (action) {
+        case 'copy-json':
+          window.copyServerJson(tool, name);
+          break;
+        case 'install-to':
+          window.openInstallToModal(tool, name);
+          break;
+        case 'toggle':
+          if (tools.length > 1) {
+            window.toggleGroupedServer(name, toolsStr);
+          } else {
+            window.toggleServer(tool, name);
+          }
+          break;
+        case 'edit':
+          window.openEditServerModal(tool, name);
+          break;
+        case 'delete':
+          if (tools.length > 1) {
+            window.deleteGroupedServer(name, toolsStr);
+          } else {
+            window.deleteServer(tool, name);
+          }
+          break;
+        case 'restore-backup':
+          window.restoreBackup(filename);
+          break;
+        case 'delete-backup':
+          window.deleteBackup(filename);
+          break;
+        case 'confirm-yes':
+          if (window._pendingConfirm) {
+            const callback = window._pendingConfirm;
+            window._pendingConfirm = null;
+            closeModal();
+            callback();
+          }
+          break;
+        case 'confirm-no':
+          window._pendingConfirm = null;
+          closeModal();
+          break;
+      }
+    } catch (err) {
+      showToast('Action failed: ' + err.message, 'error');
+    }
+  };
+
+  if (serverList) {
+    serverList.addEventListener('click', handleAction);
+  }
+
+  if (modal) {
+    modal.addEventListener('click', handleAction);
+  }
 }
 
 // Hidden class for toggling

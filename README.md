@@ -20,7 +20,8 @@
 
 | Feature | Description |
 |---------|-------------|
-| 🔗 **Unified Dashboard** | View all MCP servers across 8 AI tools in one place |
+| 🔗 **Unified Dashboard** | View all MCP servers across all AI tools in one place |
+| 🧩 **Custom AI Tools** | Add your own AI tools with custom config paths and formats (JSON/TOML) |
 | ⚙️ **Custom Paths** | Configure custom config file locations in Settings |
 | 📋 **Paste JSON** | Quickly add servers by pasting config snippets |
 | 🔄 **Sync** | Copy configurations between tools with one click |

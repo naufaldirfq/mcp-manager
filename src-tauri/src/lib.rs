@@ -38,6 +38,10 @@ pub struct ToolInfo {
     pub exists: bool,
     #[serde(rename = "isCustomPath")]
     pub is_custom_path: bool,
+    #[serde(rename = "isCustomTool")]
+    pub is_custom_tool: bool,
+    #[serde(default)]
+    pub format: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,10 +56,29 @@ pub struct BackupData {
     pub tools: HashMap<String, Vec<McpServer>>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomTool {
+    pub name: String,
+    #[serde(rename = "displayName")]
+    pub display_name: String,
+    #[serde(rename = "configPath")]
+    pub config_path: String,
+    #[serde(rename = "configKey")]
+    pub config_key: String,
+    #[serde(default = "default_format")]
+    pub format: String,
+}
+
+fn default_format() -> String {
+    "json".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AppSettings {
     #[serde(default)]
     pub custom_paths: HashMap<String, String>,
+    #[serde(default)]
+    pub custom_tools: Vec<CustomTool>,
 }
 
 // ===== Tool Definitions =====
@@ -160,11 +183,12 @@ fn save_settings(settings: &AppSettings) -> Result<(), String> {
     fs::write(&path, content).map_err(|e| e.to_string())
 }
 
-fn get_tool_path(tool_name: &str) -> Option<(PathBuf, &'static str, &'static str)> {
+fn get_tool_path(tool_name: &str) -> Option<(PathBuf, String, String)> {
     let home = get_home_dir();
     let settings = load_settings();
     let defs = get_tool_definitions();
     
+    // Check predefined tools first
     for def in defs {
         if def.name == tool_name {
             // Check for custom path first
@@ -182,9 +206,22 @@ fn get_tool_path(tool_name: &str) -> Option<(PathBuf, &'static str, &'static str
             } else {
                 (def.path_fn)(&home)
             };
-            return Some((path, def.config_key, def.format));
+            return Some((path, def.config_key.to_string(), def.format.to_string()));
         }
     }
+    
+    // Check custom tools from settings
+    for custom_tool in &settings.custom_tools {
+        if custom_tool.name == tool_name {
+            let path = if custom_tool.config_path.starts_with("~") {
+                home.join(custom_tool.config_path.trim_start_matches("~/"))
+            } else {
+                PathBuf::from(&custom_tool.config_path)
+            };
+            return Some((path, custom_tool.config_key.clone(), custom_tool.format.clone()));
+        }
+    }
+    
     None
 }
 
@@ -386,9 +423,9 @@ fn read_servers(tool: &str) -> Vec<McpServer> {
         None => return vec![],
     };
     
-    match format {
+    match format.as_str() {
         "toml" => read_toml_servers(&path),
-        _ => read_json_servers(&path, key),
+        _ => read_json_servers(&path, &key),
     }
 }
 
@@ -398,17 +435,26 @@ fn write_servers(tool: &str, servers: &[McpServer]) -> Result<(), String> {
         None => return Err(format!("Unknown tool: {}", tool)),
     };
     
-    match format {
+    match format.as_str() {
         "toml" => write_toml_servers(&path, servers),
-        _ => write_json_servers(&path, key, servers),
+        _ => write_json_servers(&path, &key, servers),
     }
 }
 
 fn get_all_configs_internal() -> HashMap<String, Vec<McpServer>> {
     let mut all = HashMap::new();
+    let settings = load_settings();
+    
+    // Add predefined tools
     for def in get_tool_definitions() {
         all.insert(def.name.to_string(), read_servers(def.name));
     }
+    
+    // Add custom tools
+    for custom_tool in &settings.custom_tools {
+        all.insert(custom_tool.name.clone(), read_servers(&custom_tool.name));
+    }
+    
     all
 }
 
@@ -421,7 +467,7 @@ mod commands {
         let home = get_home_dir();
         let settings = load_settings();
         
-        get_tool_definitions().iter().map(|def| {
+        let mut tools: Vec<ToolInfo> = get_tool_definitions().iter().map(|def| {
             let default_path = (def.path_fn)(&home);
             let custom_path = settings.custom_paths.get(def.name);
             let is_custom = custom_path.map(|p| !p.is_empty()).unwrap_or(false);
@@ -444,8 +490,32 @@ mod commands {
                 config_key: def.config_key.to_string(),
                 exists: actual_path.exists(),
                 is_custom_path: is_custom,
+                is_custom_tool: false,
+                format: def.format.to_string(),
             }
-        }).collect()
+        }).collect();
+        
+        // Add custom tools from settings
+        for custom_tool in &settings.custom_tools {
+            let path = if custom_tool.config_path.starts_with("~") {
+                home.join(custom_tool.config_path.trim_start_matches("~/"))
+            } else {
+                PathBuf::from(&custom_tool.config_path)
+            };
+            
+            tools.push(ToolInfo {
+                name: custom_tool.name.clone(),
+                display_name: custom_tool.display_name.clone(),
+                config_path: path.to_string_lossy().to_string(),
+                config_key: custom_tool.config_key.clone(),
+                exists: path.exists(),
+                is_custom_path: true,
+                is_custom_tool: true,
+                format: custom_tool.format.clone(),
+            });
+        }
+        
+        tools
     }
 
     #[tauri::command]
@@ -462,6 +532,52 @@ mod commands {
             settings.custom_paths.insert(tool, path);
         }
         save_settings(&settings)
+    }
+
+    #[tauri::command]
+    pub fn add_custom_tool(tool: CustomTool) -> Result<Vec<CustomTool>, String> {
+        let mut settings = load_settings();
+        
+        // Check if tool name already exists in predefined or custom tools
+        let predefined_names: Vec<&str> = get_tool_definitions().iter().map(|d| d.name).collect();
+        if predefined_names.contains(&tool.name.as_str()) {
+            return Err(format!("Tool name '{}' conflicts with a predefined tool", tool.name));
+        }
+        
+        if settings.custom_tools.iter().any(|t| t.name == tool.name) {
+            return Err(format!("Tool '{}' already exists", tool.name));
+        }
+        
+        settings.custom_tools.push(tool);
+        save_settings(&settings)?;
+        Ok(settings.custom_tools)
+    }
+
+    #[tauri::command]
+    pub fn update_custom_tool(name: String, tool: CustomTool) -> Result<Vec<CustomTool>, String> {
+        let mut settings = load_settings();
+        
+        if let Some(idx) = settings.custom_tools.iter().position(|t| t.name == name) {
+            settings.custom_tools[idx] = tool;
+            save_settings(&settings)?;
+            Ok(settings.custom_tools)
+        } else {
+            Err(format!("Tool '{}' not found", name))
+        }
+    }
+
+    #[tauri::command]
+    pub fn delete_custom_tool(name: String) -> Result<Vec<CustomTool>, String> {
+        let mut settings = load_settings();
+        let before_len = settings.custom_tools.len();
+        settings.custom_tools.retain(|t| t.name != name);
+        
+        if settings.custom_tools.len() == before_len {
+            return Err(format!("Tool '{}' not found", name));
+        }
+        
+        save_settings(&settings)?;
+        Ok(settings.custom_tools)
     }
 
     #[tauri::command]
@@ -655,6 +771,9 @@ pub fn run() {
             commands::get_tools,
             commands::get_settings,
             commands::update_tool_path,
+            commands::add_custom_tool,
+            commands::update_custom_tool,
+            commands::delete_custom_tool,
             commands::get_all_configs,
             commands::get_configs,
             commands::add_or_update_server,

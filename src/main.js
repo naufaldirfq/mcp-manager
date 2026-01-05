@@ -110,16 +110,25 @@ function renderToolTabs() {
       ${tab.name}
       <span class="count">${tab.count}</span>
     </button>
-  `).join('');
+  `).join('') + `
+    <button class="tool-tab add-tool-tab" id="btn-quick-add-tool" title="Add New Tool">
+      + Add
+    </button>
+  `;
 
   // Add click handlers
   container.querySelectorAll('.tool-tab').forEach(btn => {
+    if (btn.id === 'btn-quick-add-tool') return; // Skip the add button in this loop
     btn.addEventListener('click', () => {
       state.selectedTool = btn.dataset.tool;
       renderToolTabs();
       renderServerList();
       updateToolName();
     });
+  });
+
+  document.getElementById('btn-quick-add-tool')?.addEventListener('click', () => {
+    window.openAddCustomToolModal();
   });
 }
 
@@ -187,7 +196,7 @@ function renderServerList() {
 
   if (servers.length === 0) {
     container.innerHTML = `
-      <div class="empty-state">
+    <div class="empty-state" >
         <svg width="64" height="64" viewBox="0 0 16 16" fill="currentColor">
           <path d="M6 12.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5ZM3 8.062C3 6.76 4.235 5.765 5.53 5.886a26.58 26.58 0 0 0 4.94 0C11.765 5.765 13 6.76 13 8.062v1.157a.933.933 0 0 1-.765.935c-.845.147-2.34.346-4.235.346-1.895 0-3.39-.2-4.235-.346A.933.933 0 0 1 3 9.219V8.062Zm4.542-.827a.25.25 0 0 0-.217.068l-.92.9a24.767 24.767 0 0 1-1.871-.183.25.25 0 0 0-.068.495c.55.076 1.232.149 2.02.193a.25.25 0 0 0 .189-.071l.754-.736.847 1.71a.25.25 0 0 0 .404.062l.932-.97a25.286 25.286 0 0 0 1.922-.188.25.25 0 0 0-.068-.495c-.538.074-1.207.145-1.98.189a.25.25 0 0 0-.166.076l-.754.785-.842-1.7a.25.25 0 0 0-.182-.135Z"/>
           <path d="M8.5 1.866a1 1 0 1 0-1 0V3h-2A4.5 4.5 0 0 0 1 7.5V8a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1v1a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1v-.5A4.5 4.5 0 0 0 10.5 3h-2V1.866ZM14 7.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7.5A3.5 3.5 0 0 1 5.5 4h5A3.5 3.5 0 0 1 14 7.5Z"/>
@@ -206,14 +215,14 @@ function renderServerList() {
     // Generate badges HTML
     const badgesHtml = server.tools.map(t => {
       const toolInfo = state.tools.find(x => x.name === t);
-      return `<span class="server-tool-badge">${toolInfo?.displayName || t}</span>`;
+      return `<span class="server-tool-badge" > ${toolInfo?.displayName || t}</span> `;
     }).join('');
 
     // For edit/copy/install, just use the first tool/instance
     const primaryTool = server.tools[0];
 
     return `
-      <div class="server-card ${server.enabled ? '' : 'disabled'}" data-name="${escapeHtml(server.name)}">
+    <div class="server-card ${server.enabled ? '' : 'disabled'}" data-name="${escapeHtml(server.name)}" >
         <div class="server-status"></div>
         <div class="server-info">
           <div class="server-name">${escapeHtml(server.name)}</div>
@@ -291,7 +300,7 @@ function getServerModalHtml(server = null, tool = null) {
   const title = isEdit ? 'Edit MCP Server' : 'Add MCP Server';
 
   return `
-    <div class="modal-header">
+    <div class="modal-header" >
       <h3>${title}</h3>
       <button class="modal-close" onclick="window.closeModal()">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -419,7 +428,7 @@ function setupServerModalHandlers() {
       document.getElementById('server-command').value = tmpl.command || '';
       document.getElementById('server-args').value = (tmpl.args || []).join('\n');
       document.getElementById('server-url').value = tmpl.url || '';
-      document.getElementById('server-env').value = Object.entries(tmpl.env || {}).map(([k, v]) => `${k}=${v}`).join('\n');
+      document.getElementById('server-env').value = Object.entries(tmpl.env || {}).map(([k, v]) => `${k}=${v} `).join('\n');
 
       const isStdio = tmpl.type === 'stdio';
       document.getElementById('stdio-fields').classList.toggle('hidden', !isStdio);
@@ -480,7 +489,7 @@ window.toggleServer = async function (tool, name) {
 };
 
 window.deleteServer = async function (tool, name) {
-  showConfirm(`Delete server "${name}"?`, async () => {
+  showConfirm(`Delete server "${name}" ? `, async () => {
     try {
       await api.deleteServer(tool, name);
       await loadConfigs();
@@ -509,7 +518,7 @@ window.toggleGroupedServer = async function (name, toolsStr) {
 
 window.deleteGroupedServer = async function (name, toolsStr) {
   const tools = toolsStr.split(',');
-  showConfirm(`Delete server "${name}" from ALL ${tools.length} tools?`, async () => {
+  showConfirm(`Delete server "${name}" from ALL ${tools.length} tools ? `, async () => {
     try {
       let successCount = 0;
       for (const tool of tools) {
@@ -565,7 +574,7 @@ window.openInstallToModal = function (sourceTool, serverName) {
   const otherTools = state.tools.filter(t => t.name !== sourceTool);
 
   openModal(`
-    <div class="modal-header">
+    <div class="modal-header" >
       <h3>Install "${escapeHtml(serverName)}" to...</h3>
       <button class="modal-close" onclick="window.closeModal()">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -639,7 +648,7 @@ function openSyncModal() {
   const otherTools = state.tools.filter(t => t.name !== state.selectedTool);
 
   openModal(`
-    <div class="modal-header">
+    <div class="modal-header" >
       <h3>Sync Configuration</h3>
       <button class="modal-close" onclick="window.closeModal()">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -713,7 +722,7 @@ async function openBackupModal() {
   backups.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
   openModal(`
-    <div class="modal-header">
+    <div class="modal-header" >
       <h3>Backups</h3>
       <button class="modal-close" onclick="window.closeModal()">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -725,7 +734,7 @@ async function openBackupModal() {
       <button class="btn btn-primary" onclick="window.createBackup()" style="margin-bottom: 1rem; width: 100%;">
         Create New Backup
       </button>
-      
+
       <div class="backup-list">
         ${backups.length === 0 ? '<p style="color: var(--text-muted); text-align: center;">No backups yet</p>' :
       backups.map(b => {
@@ -758,7 +767,7 @@ async function openBackupModal() {
 window.createBackup = async function () {
   try {
     const result = await api.createBackup();
-    showToast(`Backup created: ${result.name}`, 'success');
+    showToast(`Backup created: ${result.name} `, 'success');
     openBackupModal(); // Refresh list
   } catch (err) {
     showToast(err.message, 'error');
@@ -780,7 +789,7 @@ window.restoreBackup = async function (filename) {
 
 window.deleteBackup = async function (filename) {
   console.log('Deleting backup:', filename);
-  if (!confirm(`Delete backup "${filename}"?`)) return;
+  if (!confirm(`Delete backup "${filename}" ? `)) return;
 
   try {
     await api.deleteBackup(filename);
@@ -811,7 +820,7 @@ async function exportConfigs() {
 
 function openImportModal() {
   openModal(`
-    <div class="modal-header">
+    <div class="modal-header" >
       <h3>Import Configuration</h3>
       <button class="modal-close" onclick="window.closeModal()">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -866,7 +875,7 @@ function openPasteJsonModal() {
   const defaultTool = state.selectedTool !== 'all' ? state.selectedTool : state.tools[0]?.name;
 
   openModal(`
-    <div class="modal-header">
+    <div class="modal-header" >
       <h3>Paste JSON Configuration</h3>
       <button class="modal-close" onclick="window.closeModal()">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -984,8 +993,11 @@ async function loadTemplates() {
 
 // ===== Settings Modal =====
 function openSettingsModal() {
-  const toolsList = state.tools.map(tool => `
-    <div class="settings-tool-item" data-tool="${tool.name}">
+  const predefinedTools = state.tools.filter(t => !t.isCustomTool);
+  const customTools = state.tools.filter(t => t.isCustomTool);
+
+  const predefinedToolsList = predefinedTools.map(tool => `
+    <div class="settings-tool-item" data-tool="${tool.name}" >
       <div class="settings-tool-header">
         <span class="status-dot ${tool.exists ? 'exists' : 'missing'}"></span>
         <span class="settings-tool-name">${tool.displayName}</span>
@@ -1009,10 +1021,40 @@ function openSettingsModal() {
         Key: <code>${tool.configKey}</code>
       </div>
     </div>
-  `).join('');
+    `).join('');
+
+  const customToolsList = customTools.length === 0 ? `
+    <p style="color: var(--text-muted); text-align: center; padding: 1rem;">
+      No custom tools added yet
+    </p>
+    ` : customTools.map(tool => `
+    <div class="settings-tool-item" data-tool="${tool.name}" >
+      <div class="settings-tool-header">
+        <span class="status-dot ${tool.exists ? 'exists' : 'missing'}"></span>
+        <span class="settings-tool-name">${escapeHtml(tool.displayName)}</span>
+        <span class="settings-tool-status ${tool.exists ? 'found' : 'not-found'}">
+          ${tool.exists ? '✓ Found' : '✗ Not found'}
+        </span>
+        <div class="settings-tool-actions">
+          <button class="btn btn-secondary btn-sm" data-action="edit-custom-tool" data-tool="${escapeHtml(tool.name)}" title="Edit">
+            ✎
+          </button>
+          <button class="btn btn-danger btn-sm" data-action="delete-custom-tool" data-tool="${escapeHtml(tool.name)}" title="Delete">
+            ✕
+          </button>
+        </div>
+      </div>
+      <div class="settings-tool-key">
+        Path: <code>${escapeHtml(tool.configPath)}</code>
+      </div>
+      <div class="settings-tool-key">
+        Key: <code>${tool.configKey}</code> | Format: <code>${tool.format || 'json'}</code>
+      </div>
+    </div>
+    `).join('');
 
   openModal(`
-    <div class="modal-header">
+    <div class="modal-header" >
       <h3>Settings</h3>
       <button class="modal-close" onclick="window.closeModal()">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -1020,16 +1062,33 @@ function openSettingsModal() {
         </svg>
       </button>
     </div>
-    <div class="modal-body">
+    <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
       <div class="settings-section">
-        <h4>Config File Paths</h4>
+        <h4>Predefined AI Tools</h4>
         <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
           Edit paths to point to your config files. Changes are saved automatically.
           <br><span class="status-dot exists" style="display: inline-block; margin: 0 4px;"></span> = found,
           <span class="status-dot missing" style="display: inline-block; margin: 0 4px;"></span> = not found
         </p>
         <div class="settings-tools-list">
-          ${toolsList}
+          ${predefinedToolsList}
+        </div>
+      </div>
+      
+      <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--border-color);">
+      
+      <div class="settings-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h4 style="margin: 0;">Custom AI Tools</h4>
+          <button class="btn btn-primary btn-sm" onclick="window.openAddCustomToolModal()">
+            + Add Tool
+          </button>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+          Add your own AI tools with custom config file paths.
+        </p>
+        <div class="settings-tools-list" id="custom-tools-list">
+          ${customToolsList}
         </div>
       </div>
     </div>
@@ -1068,6 +1127,18 @@ function setupSettingsHandlers() {
       showToast('Path reset to default', 'success');
     });
   });
+
+  document.querySelectorAll('[data-action="edit-custom-tool"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      window.openEditCustomToolModal(btn.dataset.tool);
+    });
+  });
+
+  document.querySelectorAll('[data-action="delete-custom-tool"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      window.deleteCustomTool(btn.dataset.tool);
+    });
+  });
 }
 
 window.saveToolPath = async function (tool, path) {
@@ -1097,6 +1168,145 @@ window.refreshTools = async function () {
   await loadConfigs();
   openSettingsModal();
   showToast('Tool detection refreshed', 'success');
+};
+
+// ===== Custom Tool Modal =====
+function getCustomToolModalHtml(tool = null) {
+  const isEdit = !!tool;
+  const title = isEdit ? 'Edit Custom Tool' : 'Add Custom Tool';
+
+  return `
+    <div class="modal-header" >
+      <h3>${title}</h3>
+      <button class="modal-close" onclick="window.closeModal()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Tool Name (unique identifier)</label>
+        <input type="text" class="form-input" id="custom-tool-name" 
+               value="${tool?.name || ''}" 
+               placeholder="my-tool" ${isEdit ? 'readonly' : ''}>
+        <small style="color: var(--text-muted);">Lowercase, no spaces (e.g., my-custom-tool)</small>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Display Name</label>
+        <input type="text" class="form-input" id="custom-tool-display-name" 
+               value="${tool?.displayName || ''}" 
+               placeholder="My Custom Tool">
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Config File Path</label>
+        <input type="text" class="form-input" id="custom-tool-path" 
+               value="${tool?.configPath || ''}" 
+               placeholder="~/.config/my-tool/mcp.json">
+        <small style="color: var(--text-muted);">Use ~ for home directory</small>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Config Key</label>
+          <input type="text" class="form-input" id="custom-tool-key" 
+                 value="${tool?.configKey || 'mcpServers'}" 
+                 placeholder="mcpServers">
+          <small style="color: var(--text-muted);">JSON key containing servers</small>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Format</label>
+          <select class="form-select" id="custom-tool-format">
+            <option value="json" ${!tool?.format || tool?.format === 'json' ? 'selected' : ''}>JSON</option>
+            <option value="toml" ${tool?.format === 'toml' ? 'selected' : ''}>TOML</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="window.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="window.saveCustomTool(${isEdit})">
+        ${isEdit ? 'Save Changes' : 'Add Tool'}
+      </button>
+    </div>
+  `;
+}
+
+window.openAddCustomToolModal = function () {
+  openModal(getCustomToolModalHtml(null));
+};
+
+window.openEditCustomToolModal = function (toolName) {
+  const tool = state.tools.find(t => t.name === toolName && t.isCustomTool);
+  if (tool) {
+    openModal(getCustomToolModalHtml(tool));
+  }
+};
+
+window.saveCustomTool = async function (isEdit) {
+  const name = document.getElementById('custom-tool-name').value.trim();
+  const displayName = document.getElementById('custom-tool-display-name').value.trim();
+  const configPath = document.getElementById('custom-tool-path').value.trim();
+  const configKey = document.getElementById('custom-tool-key').value.trim() || 'mcpServers';
+  const format = document.getElementById('custom-tool-format').value;
+
+  // Validation
+  if (!name) {
+    showToast('Tool name is required', 'error');
+    return;
+  }
+  if (!/^[a-z0-9-]+$/.test(name)) {
+    showToast('Tool name must be lowercase with only letters, numbers, and hyphens', 'error');
+    return;
+  }
+  if (!displayName) {
+    showToast('Display name is required', 'error');
+    return;
+  }
+  if (!configPath) {
+    showToast('Config file path is required', 'error');
+    return;
+  }
+
+  const tool = {
+    name,
+    displayName,
+    configPath,
+    configKey,
+    format
+  };
+
+  try {
+    if (isEdit) {
+      await api.updateCustomTool(name, tool);
+      showToast('Custom tool updated', 'success');
+    } else {
+      await api.addCustomTool(tool);
+      showToast('Custom tool added', 'success');
+    }
+    await loadTools();
+    await loadConfigs();
+    closeModal();
+    openSettingsModal();
+  } catch (err) {
+    showToast(err.message || 'Failed to save custom tool', 'error');
+  }
+};
+
+window.deleteCustomTool = async function (toolName) {
+  showConfirm(`Delete custom tool "${toolName}" ? This will NOT delete the config file, only remove it from MCP Manager.`, async () => {
+    try {
+      await api.deleteCustomTool(toolName);
+      await loadTools();
+      await loadConfigs();
+      showToast('Custom tool deleted', 'success');
+      openSettingsModal();
+    } catch (err) {
+      showToast(err.message || 'Failed to delete custom tool', 'error');
+    }
+  });
 };
 
 // ===== Initialization =====

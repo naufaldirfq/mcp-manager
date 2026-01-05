@@ -61,3 +61,15 @@ export async function updateToolPath(tool, path) {
     return await invoke('update_tool_path', { tool, path });
 }
 
+// ===== Custom Tools =====
+export async function addCustomTool(tool) {
+    return await invoke('add_custom_tool', { tool });
+}
+
+export async function updateCustomTool(name, tool) {
+    return await invoke('update_custom_tool', { name, tool });
+}
+
+export async function deleteCustomTool(name) {
+    return await invoke('delete_custom_tool', { name });
+}

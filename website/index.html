@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Manager - Manage Your AI Context Servers</title>
+    <meta name="description"
+        content="A lightweight desktop app to manage MCP configurations across multiple AI tools including Claude, VS Code, and more.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Background Glows -->
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="container header-inner">
+            <div class="logo">
+                <img src="assets/logo.png" alt="MCP Manager Logo">
+                <span>MCP Manager</span>
+            </div>
+            <nav class="nav">
+                <a href="https://github.com/naufaldirfq/mcp-manager" target="_blank" class="nav-link">GitHub</a>
+                <a href="https://github.com/naufaldirfq/mcp-manager/releases" target="_blank"
+                    class="btn btn-primary">Download</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container hero-content">
+            <h1 class="hero-title">Manage MCP Servers <br> <span class="text-gradient">With Ease</span></h1>
+            <p class="hero-subtitle">
+                A lightweight desktop app to manage Model Context Protocol (MCP) configurations across multiple AI
+                tools.
+                Sync, backup, and configure in one place.
+            </p>
+            <div class="hero-actions">
+                <a href="https://github.com/naufaldirfq/mcp-manager/releases" target="_blank"
+                    class="btn btn-lg btn-primary">
+                    Download for macOS
+                </a>
+                <a href="https://github.com/naufaldirfq/mcp-manager" target="_blank" class="btn btn-lg btn-secondary">
+                    View Source
+                </a>
+            </div>
+            <div class="hero-image-wrapper">
+                <img src="assets/main_screen.png" alt="MCP Manager Dashboard" class="hero-image">
+                <div class="hero-image-glow"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Grid -->
+    <section class="features">
+        <div class="container">
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔗</div>
+                    <h3>Unified Dashboard</h3>
+                    <p>View and manage all your MCP servers across 8+ supported AI tools in a single, intuitive
+                        interface.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h3>One-Click Sync</h3>
+                    <p>Easily copy server configurations between different tools. Install a server once, use it
+                        everywhere.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💾</div>
+                    <h3>Backup & Restore</h3>
+                    <p>Create instant snapshots of your configurations. Restore them anytime with peace of mind.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🧩</div>
+                    <h3>Custom Tools</h3>
+                    <p>Add support for any AI tool that uses MCP. Define custom paths and configuration formats.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Showcase Sections -->
+    <section class="showcase">
+        <div class="container showcase-inner">
+            <div class="showcase-text">
+                <h2>Add & Manage Servers</h2>
+                <p>
+                    Quickly add new MCP servers from a curated list of templates or define your own.
+                    Toggle servers on/off globally or per-tool with a single click.
+                </p>
+                <ul class="check-list">
+                    <li>Pre-built templates for popular servers</li>
+                    <li>Support for stdio and SSE transports</li>
+                    <li>Environment variable management</li>
+                </ul>
+            </div>
+            <div class="showcase-image">
+                <img src="assets/add_mcp_servers.png" alt="Add MCP Server Modal">
+            </div>
+        </div>
+    </section>
+
+    <section class="showcase showcase-reversed">
+        <div class="container showcase-inner">
+            <div class="showcase-text">
+                <h2>Quick Configuration</h2>
+                <p>
+                    Import existing configurations simply by pasting JSON.
+                    MCP Manager intelligently parses and installs them to your selected tools.
+                </p>
+                <ul class="check-list">
+                    <li>Smart JSON parsing</li>
+                    <li>Bulk import capability</li>
+                    <li>Validation before saving</li>
+                </ul>
+            </div>
+            <div class="showcase-image">
+                <img src="assets/paste_json_configuration.png" alt="Paste JSON Configuration">
+            </div>
+        </div>
+    </section>
+
+    <section class="showcase">
+        <div class="container showcase-inner">
+            <div class="showcase-text">
+                <h2>Sync Across Tools</h2>
+                <p>
+                    Stop manually copying config files. Use the Sync feature to instantly propagate a server
+                    configuration to all your installed AI tools.
+                </p>
+                <ul class="check-list">
+                    <li>Select specific tools to sync to</li>
+                    <li>Visual confirmation of installed state</li>
+                    <li>Conflict resolution</li>
+                </ul>
+            </div>
+            <div class="showcase-image">
+                <img src="assets/sync_configuration.png" alt="Sync Configuration Modal">
+            </div>
+        </div>
+    </section>
+
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="container">
+            <div class="cta-card">
+                <h2>Ready to simplify your MCP workflow?</h2>
+                <p>Download MCP Manager today and take control of your AI context.</p>
+                <div class="cta-actions">
+                    <a href="https://github.com/naufaldirfq/mcp-manager/releases" target="_blank"
+                        class="btn btn-lg btn-primary">
+                        Download Now
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container footer-inner">
+            <div class="footer-brand">
+                <img src="assets/logo.png" alt="Logo" width="32">
+                <span>MCP Manager</span>
+            </div>
+            <div class="footer-links">
+                <a href="https://github.com/naufaldirfq/mcp-manager" target="_blank">GitHub</a>
+                <a href="https://github.com/naufaldirfq/mcp-manager/issues" target="_blank">Report Issue</a>
+                <a href="https://github.com/naufaldirfq/mcp-manager/blob/main/LICENSE" target="_blank">License</a>
+            </div>
+            <div class="footer-text">
+                <p>&copy; 2026 MCP Manager. Open source software.</p>
+            </div>
+        </div>
+    </footer>
+
+</body>
+
+</html>

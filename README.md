@@ -14,6 +14,42 @@
   <img src="https://img.shields.io/badge/built%20with-Tauri-orange" alt="Built with Tauri">
 </p>
 
+<p align="center">
+  <img src="assets/main_screen.png" alt="MCP Manager Main Screen" width="800">
+</p>
+
+---
+
+## Visual Overview
+
+### Unified Dashboard
+Manage all your MCP servers in one place. Toggle them on/off, edit configurations, or copy as JSON.
+
+<p align="center">
+  <img src="assets/main_screen.png" alt="Main Dashboard" width="600">
+</p>
+
+### Easy Configuration
+Add servers using pre-built templates or create custom ones for any tool.
+
+<div align="center">
+  <img src="assets/add_mcp_servers.png" alt="Add Server" width="400">
+</div>
+
+### One-Click Sync
+Propagation your configurations across all supported AI tools with ease.
+
+<div align="center">
+  <img src="assets/sync_configuration.png" alt="Sync across tools" width="400">
+</div>
+
+### Quick Import
+Paste JSON configuration snippets to quickly add servers to your setup.
+
+<div align="center">
+  <img src="assets/paste_json_configuration.png" alt="Paste JSON" width="400">
+</div>
+
 ---
 
 ## Features
